@@ -2,6 +2,8 @@ export default class SudokuView {
   constructor(root) {
     this.root = root;
     this.cells = [];
+    this.padButtons = {};
+    this.boardEl = null;
     this.selected = null;
 
     // Callbacks the controller attaches to
@@ -45,6 +47,7 @@ export default class SudokuView {
       }
       this.cells.push(rowCells);
     }
+    this.boardEl = board;
     container.appendChild(board);
 
     container.appendChild(this._buildNumberPad());
@@ -56,6 +59,7 @@ export default class SudokuView {
     container.appendChild(message);
 
     this.root.appendChild(container);
+    this.root.appendChild(this._buildModal());
     document.addEventListener('keydown', (e) => this._handleKeydown(e));
   }
 
@@ -93,9 +97,15 @@ export default class SudokuView {
     timer.textContent = '00:00';
     this.timerEl = timer;
 
+    const mistakes = document.createElement('div');
+    mistakes.className = 'mistakes';
+    mistakes.textContent = 'Errors: 0/3';
+    this.mistakesEl = mistakes;
+
     controls.appendChild(difficultySelect);
     controls.appendChild(newGameBtn);
     controls.appendChild(timer);
+    controls.appendChild(mistakes);
     header.appendChild(controls);
     return header;
   }
@@ -110,6 +120,7 @@ export default class SudokuView {
       btn.addEventListener('click', () => {
         if (this.onNumberInput) this.onNumberInput(n);
       });
+      this.padButtons[n] = btn;
       pad.appendChild(btn);
     }
     const eraseBtn = document.createElement('button');
@@ -143,6 +154,79 @@ export default class SudokuView {
     footer.appendChild(checkBtn);
     footer.appendChild(hintBtn);
     return footer;
+  }
+
+  _buildModal() {
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+
+    const box = document.createElement('div');
+    box.className = 'modal-box';
+
+    const title = document.createElement('h2');
+    title.className = 'modal-title';
+
+    const message = document.createElement('p');
+    message.className = 'modal-message';
+
+    const btn = document.createElement('button');
+    btn.className = 'btn btn-primary';
+    btn.textContent = 'New Game';
+    btn.addEventListener('click', () => {
+      this.hideModal();
+      if (this.onNewGame) this.onNewGame();
+    });
+
+    box.appendChild(title);
+    box.appendChild(message);
+    box.appendChild(btn);
+    overlay.appendChild(box);
+
+    this.modalOverlay = overlay;
+    this.modalBox = box;
+    this.modalTitle = title;
+    this.modalMessage = message;
+    return overlay;
+  }
+
+  showEndModal(type, title, message) {
+    this.modalBox.className = `modal-box ${type}`;
+    this.modalTitle.textContent = title;
+    this.modalMessage.textContent = message;
+    this.modalOverlay.classList.add('visible');
+  }
+
+  hideModal() {
+    this.modalOverlay.classList.remove('visible');
+  }
+
+  updateMistakes(count, max) {
+    this.mistakesEl.textContent = `Errors: ${count}/${max}`;
+    this.mistakesEl.classList.toggle('danger', count >= max);
+  }
+
+  // Greys out and strikes through digits that already have all 9 correct placements.
+  updateNumberPad(completedDigits) {
+    for (let n = 1; n <= 9; n++) {
+      this.padButtons[n].classList.toggle('complete', completedDigits.includes(n));
+    }
+  }
+
+  // Quick, non-blocking "pop" feedback when a digit is placed — pure CSS, doesn't
+  // delay the next keypress or click.
+  pulseCell(row, col) {
+    const cellEl = this.cells[row][col];
+    cellEl.classList.remove('pop');
+    // Force reflow so the animation restarts even on rapid repeated input.
+    void cellEl.offsetWidth;
+    cellEl.classList.add('pop');
+  }
+
+  flashBoard(type) {
+    const cls = type === 'win' ? 'win-flash' : 'lose-shake';
+    this.boardEl.classList.remove('win-flash', 'lose-shake');
+    void this.boardEl.offsetWidth;
+    this.boardEl.classList.add(cls);
   }
 
   _handleKeydown(e) {

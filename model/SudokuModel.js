@@ -155,6 +155,17 @@ export default class SudokuModel {
     return false;
   }
 
+  // How many cells currently hold `digit` in the correct spot (max 9 when done).
+  countCorrectPlacements(digit) {
+    let count = 0;
+    for (let r = 0; r < 9; r++) {
+      for (let c = 0; c < 9; c++) {
+        if (this.board[r][c] === digit && this.solution[r][c] === digit) count++;
+      }
+    }
+    return count;
+  }
+
   isSolved() {
     for (let r = 0; r < 9; r++) {
       for (let c = 0; c < 9; c++) {
